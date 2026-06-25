@@ -1,35 +1,25 @@
-const { Schema, model } = require("mongoose");
+const { Schema, model, default: mongoose } = require("mongoose");
 
 // patientschema defines the shape of the document to be received for the patient
 const patientSchema = new Schema(
   {
-    name: {
-        type: String,
-        required: [true, 'Password is required.']
-
-    },
-    country: {
-        type: String
-
-    },
-    age: {
-        type: Number
+    user: {
+      type: mongoose.Types.ObjectId,
+      ref: "User",
+      required: true,
+      unique: true,
     },
     specialistneeded: {
-        type: String
+      type: String,
     },
     description: {
-        type: String
-    }
-
-   
-
-
+      type: String,
+    },
   },
   {
-    // this second object adds extra properties: `createdAt` and `updatedAt`    
-    timestamps: true
-  }
+    // this second object adds extra properties: `createdAt` and `updatedAt`
+    timestamps: true,
+  },
 );
 
 const Patient = model("Patient", patientSchema);

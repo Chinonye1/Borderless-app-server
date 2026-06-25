@@ -1,41 +1,26 @@
 const { Schema, model, default: mongoose } = require("mongoose");
 
-
 const physicianSchema = new Schema(
   {
-    name: {
-        type: String,
-        required: [true, 'Password is required.']
-
-    },
-    location: {
-        type: String,
-
-    },
-   
-    specialty: {
-        type: String
-    },
-    languages: {
-        type: String
-    },
-    consultfee: {
-        type: Number
-
-    },
     user: {
-        type: mongoose.Types.ObjectId,
-        ref: "User" 
-    }
-    
-   
+      type: mongoose.Types.ObjectId,
+      ref: "User",
+      required: true,
+      unique: true,
+    },
 
+    specialty: {
+      type: String,
+    },
 
+    consultfee: {
+      type: Number,
+    },
   },
   {
-    // this second object adds extra properties: `createdAt` and `updatedAt`    
-    timestamps: true
-  }
+    // this second object adds extra properties: `createdAt` and `updatedAt`
+    timestamps: true,
+  },
 );
 
 const Physician = model("Physician", physicianSchema);
