@@ -95,7 +95,7 @@ router.get("/users/patient/:patientId", async (req, res) => {
   }
 });
 
-// ==================UPDATED PATIENTS BY ID==============
+// ==================UPDATE PATIENTS BY ID==============
 
 router.put("/users/patient/:patientId", async (req, res) => {
   try {
@@ -112,7 +112,7 @@ router.put("/users/patient/:patientId", async (req, res) => {
   }
 });
 
-// ========= DELETE PPATIENT =====================
+// ========= DELETE PATIENT =====================
 
 router.delete("/users/patient/:patientId", async (req, res) => {
   try {
@@ -159,6 +159,63 @@ router.post("/users/physician", async (req, res) => {
     console.log(error);
   }
 });
+
+// ==================GET ALL PHYSICIANS==============
+router.get("/users/physicians", async (req, res) => {
+  try {
+    const allPhysicians = await Physician.find();
+
+    res.json(allPhysicians).status(200);
+  } catch (error) {
+    console.log(error);
+  }
+});
+
+
+// ==================GET A SINGLE PHYSICIANS==============
+router.get("/users/physician/:physicianId", async (req, res)=>{
+  try{
+    const physicianId = req.params.physicianId;
+    const response = await Physician.findOne({_id: physicianId});
+
+    res.json(response).status(200)
+
+  }catch(error){
+    console.log(error)
+  }
+})
+
+
+// ==================UPDATE PHYSICIAN BY ID==============
+
+router.put("/users/physician/:physicianId", async(req, res)=>{
+  try{
+    const physicianId = req.params.physicianId
+    const response = await Physician.findByIdAndUpdate({_id: physicianId}, req.body, {new: true})
+
+    res.json(response).status(200)
+
+  }catch(error){
+    console.log(error)
+  }
+})
+
+
+// ==================DELETE PHYSICIAN BY ID==============
+router.delete("/users/physician/:physicianId", async(req, res)=>{
+  try{
+    const physicianId = req.params.physicianId;
+    const response = await Physician.findByIdAndDelete({_id: physicianId})
+
+    res.json(response).status(200)
+
+
+  }catch(error){
+    console.log(error)
+  }
+})
+
+
 
 // ❗ Centralized error handling (must be placed after routes)
 const handleErrors = require("./errors");
