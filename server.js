@@ -7,19 +7,19 @@ try {
 
 // Imports Express (a Node.js framework for handling HTTP requests) and initializes the server
 const express = require("express");
+const mongoose = require("mongoose");
 const app = express();
 const router = require("./routes/index.routes");
 const Patient = require("./models/Patient.model");
 const User = require("./models/User.model");
 const Physician = require("./models/Physician.model");
+const Department = require("./models/Department.model");
 
 // ℹ️ Loads and applies global middleware (CORS, JSON parsing, etc.) for server configurations
 const config = require("./config");
 config(app);
 
-async function syncDatabaseIndexes() {
-  await Physician.syncIndexes();
-}
+
 
 // ℹ️ Middleware that establishes a database connection. Ensures the connection is created on every request. Required for serverless deployments.
 const connectDB = require("./db");
@@ -128,9 +128,12 @@ router.delete("/users/patient/:patientId", async (req, res) => {
 
 // ==================CREATE PHYSICIANS==============
 router.post("/users/physician", async (req, res) => {
+  // Start a session so the User and Physician are created atomically.
+  // If either insert fails, the whole transaction is rolled back and no
+  // orphaned user is left behind.
+  const session = await mongoose.startSession();
+  session.startTransaction();
   try {
-    console.log(req.body);
-
     const newUser = {
       email: req.body.email,
       password: req.body.password,
@@ -141,22 +144,36 @@ router.post("/users/physician", async (req, res) => {
       role: "physician",
     };
 
-    const createdUser = await User.create(newUser);
+    // With a session, `create` takes an array and returns an array.
+    const [createdUser] = await User.create([newUser], { session });
 
     console.log("new user", createdUser);
 
     const newPhysician = {
       user: createdUser._id,
+      department: req.body.department,
       specialty: req.body.specialty,
       consultfee: req.body.consultfee,
     };
 
-    const createdPhysician = await Physician.create(newPhysician);
+    const [createdPhysician] = await Physician.create([newPhysician], {
+      session,
+    });
 
     console.log("new physician", createdPhysician);
-    res.json({ createdUser, createdPhysician }).status(200);
+
+    // Both inserts succeeded — make them permanent.
+    await session.commitTransaction();
+
+    res.status(200).json({ createdUser, createdPhysician });
   } catch (error) {
+    // Something failed — undo the user insert (and anything else).
+    await session.abortTransaction();
     console.log(error);
+    res.status(400).json({ error: error.message });
+  } finally {
+    // Always release the session.
+    session.endSession();
   }
 });
 
@@ -215,6 +232,42 @@ router.delete("/users/physician/:physicianId", async(req, res)=>{
   }
 })
 
+// ==================CREATE DEPARTMENT==============
+router.post("/department", async(req, res)=>{
+  try{
+    const newDepartment = {
+      name: req.body.name,
+      description: req.body.description,
+      code: req.body.code,
+      head: req.body.head,
+      location: req.body.location,
+      isActive:req.body.isActive
+
+    }
+    const createdDepartment = await Department.create(newDepartment)
+
+    res.json(createdDepartment).status(200)
+
+  }catch(error){
+    console.log(error)
+
+  }
+})
+
+// ==================GET DEPARTMENT BY ID==============
+router.get("/department/:departmentId", async (req, res)=>{
+  try{
+    const departmentId = req.params.departmentId;
+    const response = await Department.findById({_id: departmentId})
+
+    res.json(response).status(200)
+
+  }catch(error){
+    console.log(error)
+  }
+})
+
+
 
 
 // ❗ Centralized error handling (must be placed after routes)
@@ -228,7 +281,7 @@ const PORT = process.env.PORT;
 // ℹ️ Optional for serverless deployments like Vercel.
 async function startServer() {
   await connectDB();
-  await syncDatabaseIndexes();
+ 
 
   app.listen(PORT, () => {
     console.log(`Server listening. Local access on http://localhost:${PORT}`);

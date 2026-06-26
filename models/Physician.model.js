@@ -8,6 +8,12 @@ const physicianSchema = new Schema(
       required: true,
       unique: true,
     },
+    department: {
+      type: mongoose.Types.ObjectId,
+      ref: "Department",
+      required: true
+
+    },
 
     specialty: {
       type: String,
