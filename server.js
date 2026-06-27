@@ -14,7 +14,7 @@ const Patient = require("./models/Patient.model");
 const User = require("./models/User.model");
 const Physician = require("./models/Physician.model");
 const Department = require("./models/Department.model");
-const validateUser= require("./routes/auth.routes")
+const validateUser= require("./routes/validateUser")
 
 // ℹ️ Loads and applies global middleware (CORS, JSON parsing, etc.) for server configurations
 const config = require("./config");
