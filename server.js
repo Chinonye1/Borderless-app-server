@@ -14,6 +14,7 @@ const Patient = require("./models/Patient.model");
 const User = require("./models/User.model");
 const Physician = require("./models/Physician.model");
 const Department = require("./models/Department.model");
+const validateUser= require("./routes/auth.routes")
 
 // ℹ️ Loads and applies global middleware (CORS, JSON parsing, etc.) for server configurations
 const config = require("./config");
@@ -38,13 +39,16 @@ app.use("/api", router);
 
 // ==================CREATED USERS AND PATIENTS==============
 
-router.post("/users/patient", async (req, res) => {
+router.post("/users/patient", async (req, res, next) => {
   try {
-    console.log(req.body);
+    // It helps to Validate input and check for duplicate email.
+    // (e.g. validation failed), stop here.
+    await validateUser(req, res);
+    if (res.headersSent) return;
 
     const newUser = {
       email: req.body.email,
-      password: req.body.password,
+      password: req.body.password, // hashed by the User model's presave hook
       fullname: req.body.fullname,
       country: req.body.country,
       languages: req.body.languages,
@@ -54,19 +58,17 @@ router.post("/users/patient", async (req, res) => {
 
     const createdUser = await User.create(newUser);
 
-    console.log("new user", createdUser);
-
     const newPatient = {
       user: createdUser._id,
       specialistneeded: req.body.specialistneeded,
       description: req.body.description,
     };
-    console.log("new patient", newPatient);
     const createdPatient = await Patient.create(newPatient);
 
-    res.json({ createdPatient, createdUser }).status(200);
+    res.status(200).json({ createdUser, createdPatient });
   } catch (error) {
     console.log(error);
+    res.status(500).json({ error: error.message });
   }
 });
 
@@ -128,6 +130,8 @@ router.delete("/users/patient/:patientId", async (req, res) => {
 
 // ==================CREATE PHYSICIANS==============
 router.post("/users/physician", async (req, res) => {
+
+  
   // Start a session so the User and Physician are created atomically.
   // If either insert fails, the whole transaction is rolled back and no
   // orphaned user is left behind.
@@ -205,10 +209,10 @@ router.get("/users/physician/:physicianId", async (req, res)=>{
 
 // ==================UPDATE PHYSICIAN BY ID==============
 
-router.put("/users/physician/:physicianId", async(req, res)=>{
+router.patch("/users/physician/:physicianId", async(req, res)=>{
   try{
     const physicianId = req.params.physicianId
-    const response = await Physician.findByIdAndUpdate({_id: physicianId}, req.body, {new: true})
+    const response = await Physician.findByIdAndUpdate(physicianId, req.body, {new: true})
 
     res.json(response).status(200)
 
@@ -222,7 +226,7 @@ router.put("/users/physician/:physicianId", async(req, res)=>{
 router.delete("/users/physician/:physicianId", async(req, res)=>{
   try{
     const physicianId = req.params.physicianId;
-    const response = await Physician.findByIdAndDelete({_id: physicianId})
+    const response = await Physician.findByIdAndDelete(physicianId)
 
     res.json(response).status(200)
 
