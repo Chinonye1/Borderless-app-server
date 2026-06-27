@@ -17,12 +17,10 @@ router.post("/login", async (req, res, next) => {
 
     const foundUser = await User.findOne({ email: email });
     if (!foundUser) {
-      return res
-        .status(401)
-        .json({
-          errorMessage:
-            "Opps..User not found with this email. Please sign up first!.",
-        });
+      return res.status(401).json({
+        errorMessage:
+          "Opps..User not found with this email. Please sign up first!.",
+      });
     }
 
     const isPasswordValid = await bcrypt.compare(password, foundUser.password);

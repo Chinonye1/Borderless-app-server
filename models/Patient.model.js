@@ -15,6 +15,12 @@ const patientSchema = new Schema(
     description: {
       type: String,
     },
+    image: {
+      type: String
+    },
+    document:{
+      type: String
+    }
   },
   {
     // this second object adds extra properties: `createdAt` and `updatedAt`

@@ -14,13 +14,13 @@ const Patient = require("./models/Patient.model");
 const User = require("./models/User.model");
 const Physician = require("./models/Physician.model");
 const Department = require("./models/Department.model");
-const validateUser= require("./routes/validateUser")
+const validateUser = require("./routes/validateUser");
+const cloudinary = require("cloudinary").v2;
+const upload = require("./config/cloudinary");
 
 // ℹ️ Loads and applies global middleware (CORS, JSON parsing, etc.) for server configurations
 const config = require("./config");
 config(app);
-
-
 
 // ℹ️ Middleware that establishes a database connection. Ensures the connection is created on every request. Required for serverless deployments.
 const connectDB = require("./db");
@@ -29,48 +29,63 @@ app.use(async (req, res, next) => {
   next();
 });
 
-// CRUD Operations for Physicians
-// const Physician = require("./models/Physician.model");
-// router.put("/user/");
-
 // // 👇 Defines and applies route handlers
 
 app.use("/api", router);
 
+// CRUD Operations for PATIENTS
+
 // ==================CREATED USERS AND PATIENTS==============
 
-router.post("/users/patient", async (req, res, next) => {
-  try {
-    // It helps to Validate input and check for duplicate email.
-    // (e.g. validation failed), stop here.
-    await validateUser(req, res);
-    if (res.headersSent) return;
+router.post(
+  "/users/patient",
+  upload.fields([
+    { name: "image", maxCount: 1 },
+    { name: "document", maxCount: 1 },
+  ]),
+  async (req, res, next) => {
+    try {
+      // It helps to Validate input and check for duplicate email.(e.g. validation failed), stop here.
+      await validateUser(req, res);
+      if (res.headersSent) return;
 
-    const newUser = {
-      email: req.body.email,
-      password: req.body.password, // hashed by the User model's presave hook
-      fullname: req.body.fullname,
-      country: req.body.country,
-      languages: req.body.languages,
-      age: req.body.age,
-      role: req.body.role,
-    };
+      const newUser = {
+        email: req.body.email,
+        password: req.body.password, // hashed by the User model's presave hook
+        fullname: req.body.fullname,
+        country: req.body.country,
+        languages: req.body.languages,
+        age: req.body.age,
+        role: req.body.role,
+      };
 
-    const createdUser = await User.create(newUser);
+      const createdUser = await User.create(newUser);
 
-    const newPatient = {
-      user: createdUser._id,
-      specialistneeded: req.body.specialistneeded,
-      description: req.body.description,
-    };
-    const createdPatient = await Patient.create(newPatient);
+      const newPatient = {
+        user: createdUser._id,
+        specialistneeded: req.body.specialistneeded,
+        description: req.body.description,
+        image: req.files?.image?.[0]?.path,
+        document: req.files?.document?.[0]?.path,
+      };
+      const createdPatient = await Patient.create(newPatient);
 
-    res.status(200).json({ createdUser, createdPatient });
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ error: error.message });
-  }
-});
+      res.status(200).json({ createdUser, createdPatient });
+    } catch (error) {
+      // Files upload before the DB write — if it fails, delete the orphaned uploads.
+
+      if (req.files?.image?.[0]) {
+        await cloudinary.uploader.destroy(req.files.image[0].filename);
+      }
+      if (req.files?.document?.[0]) {
+        await cloudinary.uploader.destroy(req.files.document[0].filename);
+      }
+
+      console.log(error);
+      res.status(500).json({ error: error.message });
+    }
+  },
+);
 
 // ==================GET  ALL PATIENTS==============
 
@@ -128,13 +143,12 @@ router.delete("/users/patient/:patientId", async (req, res) => {
   }
 });
 
-// ==================CREATE PHYSICIANS==============
-router.post("/users/physician", async (req, res) => {
+// CRUD Operations for PHYSICIANS
 
-  
+// ==================CREATE PHYSICIANS==============
+router.post("/users/physician", upload.single("image"), async (req, res) => {
   // Start a session so the User and Physician are created atomically.
-  // If either insert fails, the whole transaction is rolled back and no
-  // orphaned user is left behind.
+  // If either insert fails, the whole transaction is rolled back and no orphaned user is left behind.
   const session = await mongoose.startSession();
   session.startTransaction();
   try {
@@ -158,6 +172,7 @@ router.post("/users/physician", async (req, res) => {
       department: req.body.department,
       specialty: req.body.specialty,
       consultfee: req.body.consultfee,
+      image: req.file?.path,
     };
 
     const [createdPhysician] = await Physician.create([newPhysician], {
@@ -173,6 +188,12 @@ router.post("/users/physician", async (req, res) => {
   } catch (error) {
     // Something failed — undo the user insert (and anything else).
     await session.abortTransaction();
+
+    // The image was uploaded to Cloudinary before the transaction ran, so if the DB work rolled back, remove the now orphaned file.
+    if (req.file) {
+      await cloudinary.uploader.destroy(req.file.filename);
+    }
+
     console.log(error);
     res.status(400).json({ error: error.message });
   } finally {
@@ -192,87 +213,75 @@ router.get("/users/physicians", async (req, res) => {
   }
 });
 
-
 // ==================GET A SINGLE PHYSICIANS==============
-router.get("/users/physician/:physicianId", async (req, res)=>{
-  try{
+router.get("/users/physician/:physicianId", async (req, res) => {
+  try {
     const physicianId = req.params.physicianId;
-    const response = await Physician.findOne({_id: physicianId});
+    const response = await Physician.findOne({ _id: physicianId });
 
-    res.json(response).status(200)
-
-  }catch(error){
-    console.log(error)
+    res.json(response).status(200);
+  } catch (error) {
+    console.log(error);
   }
-})
-
+});
 
 // ==================UPDATE PHYSICIAN BY ID==============
 
-router.patch("/users/physician/:physicianId", async(req, res)=>{
-  try{
-    const physicianId = req.params.physicianId
-    const response = await Physician.findByIdAndUpdate(physicianId, req.body, {new: true})
+router.patch("/users/physician/:physicianId", async (req, res) => {
+  try {
+    const physicianId = req.params.physicianId;
+    const response = await Physician.findByIdAndUpdate(physicianId, req.body, {
+      new: true,
+    });
 
-    res.json(response).status(200)
-
-  }catch(error){
-    console.log(error)
+    res.json(response).status(200);
+  } catch (error) {
+    console.log(error);
   }
-})
-
+});
 
 // ==================DELETE PHYSICIAN BY ID==============
-router.delete("/users/physician/:physicianId", async(req, res)=>{
-  try{
+router.delete("/users/physician/:physicianId", async (req, res) => {
+  try {
     const physicianId = req.params.physicianId;
-    const response = await Physician.findByIdAndDelete(physicianId)
+    const response = await Physician.findByIdAndDelete(physicianId);
 
-    res.json(response).status(200)
-
-
-  }catch(error){
-    console.log(error)
+    res.json(response).status(200);
+  } catch (error) {
+    console.log(error);
   }
-})
+});
 
 // ==================CREATE DEPARTMENT==============
-router.post("/department", async(req, res)=>{
-  try{
+router.post("/department", async (req, res) => {
+  try {
     const newDepartment = {
       name: req.body.name,
       description: req.body.description,
       code: req.body.code,
       head: req.body.head,
       location: req.body.location,
-      isActive:req.body.isActive
+      isActive: req.body.isActive,
+    };
+    const createdDepartment = await Department.create(newDepartment);
 
-    }
-    const createdDepartment = await Department.create(newDepartment)
-
-    res.json(createdDepartment).status(200)
-
-  }catch(error){
-    console.log(error)
-
+    res.json(createdDepartment).status(200);
+  } catch (error) {
+    console.log(error);
   }
-})
+});
 
 // ==================GET DEPARTMENT BY ID==============
-router.get("/department/:departmentId", async (req, res)=>{
-  try{
+router.get("/department/:departmentId", async (req, res) => {
+  try {
     const departmentId = req.params.departmentId;
-    const response = await Department.findById({_id: departmentId})
+    const response = await Department.findById({ _id: departmentId });
 
-    res.json(response).status(200)
-
-  }catch(error){
-    console.log(error)
+    res.json(response).status(200);
+  } catch (error) {
+    console.log(error);
   }
-})
-
-
-
+});
 
 // ❗ Centralized error handling (must be placed after routes)
 const handleErrors = require("./errors");
@@ -285,7 +294,6 @@ const PORT = process.env.PORT;
 // ℹ️ Optional for serverless deployments like Vercel.
 async function startServer() {
   await connectDB();
- 
 
   app.listen(PORT, () => {
     console.log(`Server listening. Local access on http://localhost:${PORT}`);

@@ -14,6 +14,9 @@ const physicianSchema = new Schema(
       required: true
 
     },
+     image: {
+      type: String
+    },
 
     specialty: {
       type: String,
