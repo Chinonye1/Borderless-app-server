@@ -6,6 +6,7 @@ const router = require("express").Router();
 
 // POST /api/auth/login
 router.post("/login", async (req, res, next) => {
+ 
   try {
     const { email, password } = req.body;
 

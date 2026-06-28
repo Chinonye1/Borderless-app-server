@@ -1,7 +1,8 @@
 // ❗This is an example of a User Model.
 // TODO: Please make sure you edit the User model to whatever makes sense in your project.
 
-const { Schema, model } = require("mongoose");
+const mongoose = require("mongoose");
+const { Schema, model } = mongoose;
 const bcrypt = require("bcrypt");
 
 const SALT_ROUNDS = 10;

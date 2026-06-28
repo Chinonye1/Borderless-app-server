@@ -1,4 +1,5 @@
-const { Schema, model, default: mongoose } = require("mongoose");
+const mongoose = require("mongoose");
+const { Schema, model } = mongoose;
 
 // patientschema defines the shape of the document to be received for the patient
 const patientSchema = new Schema(
