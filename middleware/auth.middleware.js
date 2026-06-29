@@ -5,6 +5,8 @@ const jwt = require("jsonwebtoken");
 function verifyToken(req, res, next) {
   const token = req.headers.authorization?.split(" ")[1];
 
+ 
+
 // If it failure, it stops the request with a 401 and never reaches the route handler.
   if (!token) {
     return res.status(401).json({ errorMessage: "Token not provided" });
