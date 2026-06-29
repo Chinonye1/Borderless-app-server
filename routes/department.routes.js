@@ -36,7 +36,7 @@ router.get("/department/:departmentId", verifyToken, async (req, res, next) => {
 });
 
 // ==================GET ALL DEPARTMENTS==============
-router.get("/departments", verifyToken, async (req, res, next) => {
+router.get("/departments", async (req, res, next) => {
   try {
     const departments = await Department.find();
     res.status(200).json(departments);
