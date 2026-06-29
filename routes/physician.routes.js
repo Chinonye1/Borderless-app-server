@@ -6,19 +6,23 @@ const User = require("../models/User.model");
 const Physician = require("../models/Physician.model");
 const upload = require("../config/cloudinary");
 const verifyToken = require("../middleware/auth.middleware");
+const validateUser = require("./validateUser");
 
 // ==================CREATE PHYSICIAN==============
 router.post(
   "/users/physician",
-  verifyToken,
   upload.single("image"),
-  async (req, res) => {
+  async (req, res, next) => {
     // Start a session so the User and Physician are created atomically.
     // If either insert fails, the whole transaction is rolled back and no orphaned user is left behind.
     const session = await mongoose.startSession();
     session.startTransaction();
 
     try {
+      // Validate input and check for duplicate email. If it fails, stop here.
+      await validateUser(req, res, next);
+      if (res.headersSent) return;
+
       const newUser = {
         email: req.body.email,
         password: req.body.password,
@@ -67,48 +71,88 @@ router.post(
 );
 
 // ==================GET ALL PHYSICIANS==============
-router.get("/users/physicians", verifyToken, async (req, res) => {
+router.get("/users/physicians", verifyToken, async (req, res, next) => {
   try {
-    const allPhysicians = await Physician.find();
-    res.status(200).json(allPhysicians);
+    const filter = {};
+
+    if (req.query.specialty) filter.specialty = req.query.specialty;
+    if (req.query.department) filter.department = req.query.department;
+
+   
+    if (req.query.country) {
+      const usersInCountry = await User.find(
+        { role: "physician", country: req.query.country },
+        "_id",
+      );
+      filter.user = { $in: usersInCountry.map((u) => u._id) };
+    }
+
+    const physicians = await Physician.find(filter)
+      .populate("user", "-password")
+      .populate("department");
+
+    res.status(200).json(physicians);
   } catch (error) {
-    console.log(error);
+    next(error);
   }
 });
 
 // ==================GET A SINGLE PHYSICIAN==============
-router.get("/users/physician/:physicianId", verifyToken, async (req, res) => {
-  try {
-    const physicianId = req.params.physicianId;
-    const response = await Physician.findOne({_id: physicianId}  );
-    res.status(200).json(response);
-  } catch (error) {
-    console.log(error);
-  }
-});
+router.get(
+  "/users/physician/:physicianId",
+  verifyToken,
+  async (req, res, next) => {
+    try {
+      const physicianId = req.params.physicianId;
+      const response = await Physician.findOne({ _id: physicianId })
+        .populate("user", "-password")
+        .populate("department");
+
+      if (!response) {
+        return res.status(404).json({ errorMessage: "Physician not found" });
+      }
+
+      res.status(200).json(response);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
 
 // ==================UPDATE PHYSICIAN BY ID==============
-router.patch("/users/physician/:physicianId", verifyToken, async (req, res) => {
-  try {
-    const physicianId = req.params.physicianId;
-    const response = await Physician.findByIdAndUpdate(physicianId, req.body, {
-      new: true,
-    });
-    res.status(200).json(response);
-  } catch (error) {
-    console.log(error);
-  }
-});
+router.patch(
+  "/users/physician/:physicianId",
+  verifyToken,
+  async (req, res, next) => {
+    try {
+      const physicianId = req.params.physicianId;
+      const response = await Physician.findByIdAndUpdate(
+        physicianId,
+        req.body,
+        {
+          new: true,
+        },
+      );
+      res.status(200).json(response);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
 
 // ==================DELETE PHYSICIAN BY ID==============
-router.delete("/users/physician/:physicianId", verifyToken, async (req, res) => {
-  try {
-    const physicianId = req.params.physicianId;
-    const response = await Physician.findByIdAndDelete(physicianId);
-    res.status(200).json(response);
-  } catch (error) {
-    console.log(error);
-  }
-});
+router.delete(
+  "/users/physician/:physicianId",
+  verifyToken,
+  async (req, res, next) => {
+    try {
+      const physicianId = req.params.physicianId;
+      const response = await Physician.findByIdAndDelete(physicianId);
+      res.status(200).json(response);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
 
 module.exports = router;

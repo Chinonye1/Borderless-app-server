@@ -8,7 +8,7 @@ router.post("/connections", verifyToken, async (req, res, next) => {
   try {
     const role = req.user.role;
 
-    console.log("request", req.user)
+   
 
     let patient;
     let physician;
@@ -26,8 +26,7 @@ router.post("/connections", verifyToken, async (req, res, next) => {
       patient = await Patient.findById(req.body.patientId);
     }
 
-    console.log("physician", physician)
-     console.log("patient", patient)
+    
 
     //check for profile existence
     if (!patient || !physician) {
@@ -103,6 +102,9 @@ router.get("/connections", verifyToken, async (req, res, next) => {
 
 router.patch("/connections/:id", verifyToken, async (req, res, next) => {
   try {
+
+     
+
     const { status } = req.body;
 
     // Only "accepted" or "declined" are valid responses

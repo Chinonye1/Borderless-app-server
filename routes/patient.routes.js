@@ -17,7 +17,7 @@ router.post(
   async (req, res, next) => {
     try {
       // Validate input and check for duplicate email. If it fails, stop here.
-      await validateUser(req, res);
+      await validateUser(req, res, next);
       if (res.headersSent) return;
 
       const newUser = {
@@ -58,46 +58,61 @@ router.post(
 );
 
 // ==================GET ALL PATIENTS==============
-router.get("/users/patients", verifyToken, async (req, res) => {
+router.get("/users/patients", verifyToken, async (req, res, next) => {
   try {
-    const allPatients = await Patient.find();
+    const allPatients = await Patient.find().populate("user", "-password");
     res.status(200).json(allPatients);
   } catch (error) {
-    console.log(error);
+    next(error);
   }
 });
 
 // ==================GET A SINGLE PATIENT==============
-router.get("/users/patient/:patientId", verifyToken, async (req, res) => {
+router.get("/users/patient/:patientId", verifyToken, async (req, res, next) => {
   try {
     const patientId = req.params.patientId;
-    const response = await Patient.findOne( {_id: patientId });
+    const response = await Patient.findOne({ _id: patientId }).populate(
+      "user",
+      "-password",
+    );
+
+    if (!response) {
+      return res.status(404).json({ errorMessage: "Patient not found" });
+    }
     res.status(200).json(response);
   } catch (error) {
-    console.log(error);
+    next(error);
   }
 });
 
 // ==================UPDATE PATIENT BY ID==============
-router.put("/users/patient/:patientId", verifyToken, async (req, res) => {
+router.put("/users/patient/:patientId", verifyToken, async (req, res, next) => {
   try {
     const patientId = req.params.patientId;
-    const response = await Patient.findByIdAndUpdate(patientId , req.body, {new: true});
+    const response = await Patient.findByIdAndUpdate(
+      patientId,
+      req.body,
+      { new: true },
+    );
     res.status(200).json(response);
   } catch (error) {
-    console.log(error);
+    next(error);
   }
 });
 
 // ========= DELETE PATIENT =====================
-router.delete("/users/patient/:patientId", verifyToken, async (req, res) => {
-  try {
-    const patientId = req.params.patientId;
-    const response = await Patient.findByIdAndDelete( patientId );
-    res.status(200).json(response);
-  } catch (error) {
-    console.log(error);
-  }
-});
+router.delete(
+  "/users/patient/:patientId",
+  verifyToken,
+  async (req, res, next) => {
+    try {
+      const patientId = req.params.patientId;
+      const response = await Patient.findByIdAndDelete(patientId);
+      res.status(200).json(response);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
 
 module.exports = router;
