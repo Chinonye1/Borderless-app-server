@@ -1,6 +1,9 @@
 const User = require("../models/User.model");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+const Patient = require("../models/Patient.model");
+const Physician = require("../models/Physician.model");
+const verifyToken = require("../middleware/auth.middleware");
 
 const router = require("express").Router();
 
@@ -45,6 +48,30 @@ router.post("/login", async (req, res, next) => {
     });
 
     res.status(200).json({ authToken: authToken });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// GET /api/auth/me....helps to return the loggedin user and their profile
+router.get("/me", verifyToken, async (req, res, next) => {
+  try {
+  
+    const user = await User.findById(req.user._id).select("-password");
+    if (!user) {
+      return res.status(404).json({ errorMessage: "User not found" });
+    }
+
+
+    let profile = null;
+    if (user.role === "patient") {
+      profile = await Patient.findOne({ user: user._id });
+    } else if (user.role === "physician") {
+      profile = await Physician.findOne({ user: user._id }).populate("department");
+    }
+
+    
+    res.status(200).json({ user, profile });
   } catch (error) {
     next(error);
   }

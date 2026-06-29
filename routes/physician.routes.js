@@ -78,7 +78,6 @@ router.get("/users/physicians", verifyToken, async (req, res, next) => {
     if (req.query.specialty) filter.specialty = req.query.specialty;
     if (req.query.department) filter.department = req.query.department;
 
-   
     if (req.query.country) {
       const usersInCountry = await User.find(
         { role: "physician", country: req.query.country },
@@ -124,19 +123,23 @@ router.patch(
   "/users/physician/:physicianId",
   verifyToken,
   async (req, res, next) => {
-    try {
+     try {
       const physicianId = req.params.physicianId;
-      const response = await Physician.findByIdAndUpdate(
-        physicianId,
-        req.body,
-        {
-          new: true,
-        },
-      );
+
+      const physician = await Physician.findById(physicianId);
+      if (!physician) {
+        return res.status(404).json({ errorMessage: "Physician not found" });
+      }
+      if (!physician.user.equals(req.user._id)) {
+        return res.status(403).json({ errorMessage: "You can only edit your own profile." });
+      }
+
+      const response = await Physician.findByIdAndUpdate(physicianId, req.body, { new: true });
       res.status(200).json(response);
     } catch (error) {
       next(error);
     }
+
   },
 );
 
@@ -145,8 +148,17 @@ router.delete(
   "/users/physician/:physicianId",
   verifyToken,
   async (req, res, next) => {
-    try {
+     try {
       const physicianId = req.params.physicianId;
+
+      const physician = await Physician.findById(physicianId);
+      if (!physician) {
+        return res.status(404).json({ errorMessage: "Physician not found" });
+      }
+      if (!physician.user.equals(req.user._id)) {
+        return res.status(403).json({ errorMessage: "You can only delete your own profile." });
+      }
+
       const response = await Physician.findByIdAndDelete(physicianId);
       res.status(200).json(response);
     } catch (error) {

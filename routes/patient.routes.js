@@ -60,6 +60,12 @@ router.post(
 // ==================GET ALL PATIENTS==============
 router.get("/users/patients", verifyToken, async (req, res, next) => {
   try {
+    if (req.user.role !== "physician") {
+      return res
+        .status(403)
+        .json({ errorMessage: "Only doctors can view patients." });
+    }
+
     const allPatients = await Patient.find().populate("user", "-password");
     res.status(200).json(allPatients);
   } catch (error) {
@@ -70,6 +76,12 @@ router.get("/users/patients", verifyToken, async (req, res, next) => {
 // ==================GET A SINGLE PATIENT==============
 router.get("/users/patient/:patientId", verifyToken, async (req, res, next) => {
   try {
+    if (req.user.role !== "physician") {
+      return res
+        .status(403)
+        .json({ errorMessage: "Only doctors can view patients." });
+    }
+
     const patientId = req.params.patientId;
     const response = await Patient.findOne({ _id: patientId }).populate(
       "user",
@@ -89,11 +101,19 @@ router.get("/users/patient/:patientId", verifyToken, async (req, res, next) => {
 router.put("/users/patient/:patientId", verifyToken, async (req, res, next) => {
   try {
     const patientId = req.params.patientId;
-    const response = await Patient.findByIdAndUpdate(
-      patientId,
-      req.body,
-      { new: true },
-    );
+    const patient = await Patient.findById(patientId);
+    if (!patient) {
+      return res.status(404).json({ errorMessage: "Patient not found" });
+    }
+    if (!patient.user.equals(req.user._id)) {
+      return res
+        .status(403)
+        .json({ errorMessage: "You can only edit your own profile." });
+    }
+
+    const response = await Patient.findByIdAndUpdate(patientId, req.body, {
+      new: true,
+    });
     res.status(200).json(response);
   } catch (error) {
     next(error);
@@ -107,6 +127,17 @@ router.delete(
   async (req, res, next) => {
     try {
       const patientId = req.params.patientId;
+
+      const patient = await Patient.findById(patientId);
+      if (!patient) {
+        return res.status(404).json({ errorMessage: "Patient not found" });
+      }
+      if (!patient.user.equals(req.user._id)) {
+        return res
+          .status(403)
+          .json({ errorMessage: "You can only delete your own profile." });
+      }
+
       const response = await Patient.findByIdAndDelete(patientId);
       res.status(200).json(response);
     } catch (error) {
