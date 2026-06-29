@@ -80,7 +80,7 @@ router.get("/users/physicians", verifyToken, async (req, res) => {
 router.get("/users/physician/:physicianId", verifyToken, async (req, res) => {
   try {
     const physicianId = req.params.physicianId;
-    const response = await Physician.findOne({ _id: physicianId });
+    const response = await Physician.findOne({_id: physicianId}  );
     res.status(200).json(response);
   } catch (error) {
     console.log(error);

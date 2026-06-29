@@ -25,7 +25,7 @@ router.post("/department", verifyToken, async (req, res) => {
 router.get("/department/:departmentId", verifyToken, async (req, res) => {
   try {
     const departmentId = req.params.departmentId;
-    const response = await Department.findById({ _id: departmentId });
+    const response = await Department.findById( departmentId );
     res.status(200).json(response);
   } catch (error) {
     console.log(error);

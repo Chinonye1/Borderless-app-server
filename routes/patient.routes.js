@@ -71,7 +71,7 @@ router.get("/users/patients", verifyToken, async (req, res) => {
 router.get("/users/patient/:patientId", verifyToken, async (req, res) => {
   try {
     const patientId = req.params.patientId;
-    const response = await Patient.findOne({ _id: patientId });
+    const response = await Patient.findOne( {_id: patientId });
     res.status(200).json(response);
   } catch (error) {
     console.log(error);
@@ -82,7 +82,7 @@ router.get("/users/patient/:patientId", verifyToken, async (req, res) => {
 router.put("/users/patient/:patientId", verifyToken, async (req, res) => {
   try {
     const patientId = req.params.patientId;
-    const response = await Patient.findByIdAndUpdate({ _id: patientId }, req.body);
+    const response = await Patient.findByIdAndUpdate(patientId , req.body, {new: true});
     res.status(200).json(response);
   } catch (error) {
     console.log(error);
@@ -93,7 +93,7 @@ router.put("/users/patient/:patientId", verifyToken, async (req, res) => {
 router.delete("/users/patient/:patientId", verifyToken, async (req, res) => {
   try {
     const patientId = req.params.patientId;
-    const response = await Patient.findByIdAndDelete({ _id: patientId });
+    const response = await Patient.findByIdAndDelete( patientId );
     res.status(200).json(response);
   } catch (error) {
     console.log(error);
