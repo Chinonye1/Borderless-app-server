@@ -32,6 +32,23 @@ const departmentSchema = new Schema(
       trim: true,
     },
 
+    image: {
+      type: String,
+    },
+
+    specialties: {
+      type: [String],
+      default: [],
+    },
+
+    icon: {
+      type: String,
+    },
+
+    color: {
+      type: String,
+    },
+
     isActive: {
       type: Boolean,
       default: true,
