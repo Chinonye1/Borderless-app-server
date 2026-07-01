@@ -28,6 +28,10 @@ app.use("/api", router);
 // ❗ Centralized error handling (must be placed after routes)
 const handleErrors = require("./errors");
 
+app.get("/", (req, res) => {
+  res.status(200).json({ message: "All is good" });
+});
+
 handleErrors(app);
 
 // ℹ️ Defines the server port (default: 5005)
